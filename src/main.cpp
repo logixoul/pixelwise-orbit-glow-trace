@@ -1,16 +1,17 @@
 #include "precompiled.h"
 
 #include "util.h"
+#include "stuff.h"
 
-ci::Surface32f src;
+Array2D<Vec3f> src;
 int scale = 2;
 Array2D<float> srcB;
 Array2D<Vec2f> gradients;
-Array2D<Vec4f> result;
+Array2D<Vec3f> result;
 
-float getB(Color c)
+float getB(Vec3f c)
 {
-  return sqrt(c.r*c.r+c.g*c.g+c.b*c.b);//(c.r+c.g+c.b);
+  return sqrt(c.x*c.x+c.y*c.y+c.z*c.z);//(c.r+c.g+c.b);
 }
 
 inline Vec4f mul(Vec4f const& v, float f)
@@ -122,20 +123,19 @@ struct SApp : AppBasic {
 		cout << test2 << endl;
 		Sleep(100*1000);*/
 		ci::Timer timer;timer.start();
-		src = Surface32f(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
-		setWindowSize(src.getWidth(), src.getHeight());
-		src = ci::ip::resizeCopy(src, src.getBounds(), src.getSize() / ::scale);
+		src = (Array2D<Vec3f>)Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
+		setWindowSize(src.w, src.h);
+		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
 
-		srcB = Array2D<float>(src.getWidth(), src.getHeight());
-		gradients = Array2D<Vec2f>(src.getWidth(), src.getHeight());
-		for(int y = 0; y < src.getHeight(); y++) {
-			for(int x = 0; x < src.getWidth(); x++) {
-				srcB(x, y) = getB(src.getPixel(Vec2i(x, y)));
+		srcB = Array2D<float>(src.Size());
+		gradients = Array2D<Vec2f>(src.Size());
+		for(int y = 0; y < src.h; y++) {
+			for(int x = 0; x < src.w; x++) {
+				srcB(x, y) = getB(src(x, y));
 			}
 		}
-		float maxDist = Vec3f::one().length();
-		for(int y = 0; y < src.getHeight(); y++) {
-			for(int x = 0; x < src.getWidth(); x++) {
+		for(int y = 0; y < src.h; y++) {
+			for(int x = 0; x < src.w; x++) {
 				Vec2f p(x, y);
 
 				float dx = -srcB.wr(p.x - 1, p.y) + srcB.wr(p.x + 1, p.y);
@@ -148,15 +148,15 @@ struct SApp : AppBasic {
 			}
 		}
 
-		result = Array2D<Vec4f>(src.getWidth(), src.getHeight());
+		result = Array2D<Vec3f>(src.Size());
 		
 		auto func = [&](int yMin, int yMax) {
 			for(int y = yMin; y < yMax; y++) {
 				//cout << (int)(100 * y / (float)src.getHeight()) << "%" << endl;
-				for(int x = 0; x < src.getWidth(); x++) {
+				for(int x = 0; x < src.w; x++) {
 					Aligned16Struct a16s;
-					ColorA& atXy_f = (ColorA&)a16s;
-					atXy_f = src.getPixel(Vec2i(x, y));
+					Vec3f& atXy_f = (Vec3f&)a16s;
+					atXy_f = src(x, y);
 					const float times = 100.0f;
 					atXy_f /= times;
 					Vec2f place(x, y);
@@ -172,8 +172,8 @@ struct SApp : AppBasic {
 				}
 			}
 		};
-		boost::thread t(func, 0, src.getHeight()/2);
-		func(src.getHeight()/2, src.getHeight());
+		boost::thread t(func, 0, src.h/2);
+		func(src.h/2, src.h);
 		t.join();
 		/*iter = result.getIter();
 		while(iter.line()) while(iter.pixel()) {
@@ -188,15 +188,7 @@ struct SApp : AppBasic {
 	void draw()
 	{
 		gl::clear(Color(0, 0, 0));
-		gl::Texture tex(src.getWidth(), src.getHeight());
-		tex.bind();
-		glTexSubImage2D(GL_TEXTURE_2D,
-			0, // level
-			0, 0, // offset
-			result.w, result.h,
-			GL_RGBA,
-			GL_FLOAT,
-			result.data);
+		auto tex = gtex(result);
 		gl::draw(tex, getWindowBounds());
 	}
 };
