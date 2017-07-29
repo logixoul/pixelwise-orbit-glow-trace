@@ -3,7 +3,7 @@
 #include "util.h"
 #include "stuff.h"
 
-const int scale = 2;
+const int scale = 1;
 Array2D<float> srcB;
 Array2D<Vec3f> result;
 
@@ -116,41 +116,47 @@ struct SApp : AppBasic {
 	{
 		createConsole();
 
-		Array2D<Vec3f> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
+		Array2D<Vec3f> src = Surface8u(loadImage("test.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
 
-		srcB = Array2D<float>(src.Size());
-		forxy(src) {
-			srcB(p) = getB(src(p));
+		vector<Array2D<float>> resultRGB;
+		for(int chan = 0; chan < 3; chan++) {
+			resultRGB.push_back(Array2D<float>(src.Size()));
 		}
-		auto gradients = ::get_gradients(srcB);
-
-		result = Array2D<Vec3f>(src.Size());
 		
-		auto func = [&](int yMin, int yMax) {
-			for(int y = yMin; y < yMax; y++) {
-				for(int x = 0; x < src.w; x++) {
-					Aligned16Struct a16s;
-					Vec3f& atXy_f = (Vec3f&)a16s;
-					atXy_f = src(x, y);
-					const float times = 100.0f;
-					atXy_f /= times;
-					Vec2f place(x, y);
-					Vec2f gradientPersistent = Vec2f::zero();
-					for(int i = 0; i < times; i++) {
-						Vec2f& gradient = fetchBilinear<Vec2f>(gradients, place);
-						//gradient = Vec2f(-gradient.y, gradient.x);
-						gradientPersistent += gradient;
-						place += gradientPersistent * 10;
-						aaPoint(result, place, atXy_f);
+		for(int chan = 0; chan < 3; chan++) {
+			srcB = Array2D<float>(src.Size());
+			forxy(src) {
+				srcB(p) = src(p)[chan];
+			}
+			auto gradients = ::get_gradients(srcB);
+
+			auto func = [&](int yMin, int yMax) {
+				for(int y = yMin; y < yMax; y++) {
+					for(int x = 0; x < src.w; x++) {
+						Aligned16Struct a16s;
+						float& atXy_f = (float&)a16s;
+						atXy_f = src(x, y)[chan];
+						const float times = 50.0f;
+						atXy_f /= times;
+						Vec2f place(x, y);
+						Vec2f gradientPersistent = Vec2f::zero();
+						for(int i = 0; i < times; i++) {
+							Vec2f& gradient = fetchBilinear<Vec2f>(gradients, place);
+							//gradient = Vec2f(-gradient.y, gradient.x);
+							gradientPersistent += gradient;
+							place += gradientPersistent * 10;
+							aaPoint(resultRGB[chan], place, atXy_f);
+						}
 					}
 				}
-			}
-		};
-		boost::thread t(func, 0, src.h/2);
-		func(src.h/2, src.h);
-		t.join();
+			};
+			boost::thread t(func, 0, src.h/2);
+			func(src.h/2, src.h);
+			t.join();
+		}
+		result = ::merge(resultRGB);
 	}
 	void draw()
 	{
