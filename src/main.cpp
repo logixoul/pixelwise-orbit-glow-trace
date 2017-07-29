@@ -3,6 +3,7 @@
 #include "util.h"
 
 ci::Surface32f src;
+int scale = 2;
 Array2D<float> srcB;
 Array2D<Vec2f> gradients;
 Array2D<Vec4f> result;
@@ -122,6 +123,9 @@ struct SApp : AppBasic {
 		Sleep(100*1000);*/
 		ci::Timer timer;timer.start();
 		src = Surface32f(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
+		setWindowSize(src.getWidth(), src.getHeight());
+		src = ci::ip::resizeCopy(src, src.getBounds(), src.getSize() / ::scale);
+
 		srcB = Array2D<float>(src.getWidth(), src.getHeight());
 		gradients = Array2D<Vec2f>(src.getWidth(), src.getHeight());
 		for(int y = 0; y < src.getHeight(); y++) {
@@ -144,7 +148,6 @@ struct SApp : AppBasic {
 			}
 		}
 
-		setWindowSize(src.getWidth(), src.getHeight());
 		result = Array2D<Vec4f>(src.getWidth(), src.getHeight());
 		
 		auto func = [&](int yMin, int yMax) {
