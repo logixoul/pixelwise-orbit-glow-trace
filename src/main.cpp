@@ -3,10 +3,8 @@
 #include "util.h"
 #include "stuff.h"
 
-Array2D<Vec3f> src;
-int scale = 2;
+const int scale = 2;
 Array2D<float> srcB;
-Array2D<Vec2f> gradients;
 Array2D<Vec3f> result;
 
 float getB(Vec3f c)
@@ -123,27 +121,20 @@ struct SApp : AppBasic {
 		cout << test2 << endl;
 		Sleep(100*1000);*/
 		ci::Timer timer;timer.start();
-		src = (Array2D<Vec3f>)Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
+		Array2D<Vec3f> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
 
 		srcB = Array2D<float>(src.Size());
-		gradients = Array2D<Vec2f>(src.Size());
 		forxy(src) {
 			srcB(p) = getB(src(p));
 		}
-		forxy(src) {
-			float dx = -srcB.wr(p.x - 1, p.y) + srcB.wr(p.x + 1, p.y);
-			float dy = -srcB.wr(p.x, p.y - 1) + srcB.wr(p.x, p.y + 1);
-					
-			gradients(p) = Vec2f(dx, dy);
-		}
+		auto gradients = ::get_gradients(srcB);
 
 		result = Array2D<Vec3f>(src.Size());
 		
 		auto func = [&](int yMin, int yMax) {
 			for(int y = yMin; y < yMax; y++) {
-				//cout << (int)(100 * y / (float)src.getHeight()) << "%" << endl;
 				for(int x = 0; x < src.w; x++) {
 					Aligned16Struct a16s;
 					Vec3f& atXy_f = (Vec3f&)a16s;
