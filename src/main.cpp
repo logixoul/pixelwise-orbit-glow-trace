@@ -116,11 +116,6 @@ struct SApp : AppBasic {
 	{
 		createConsole();
 
-		/*Vec4f test(1, 2, 3, 4.5);
-		auto test2 = mul(test, 2);
-		cout << test2 << endl;
-		Sleep(100*1000);*/
-		ci::Timer timer;timer.start();
 		Array2D<Vec3f> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
@@ -144,11 +139,10 @@ struct SApp : AppBasic {
 					Vec2f place(x, y);
 					Vec2f gradientPersistent = Vec2f::zero();
 					for(int i = 0; i < times; i++) {
-						Vec2f const& gradient = fetchBilinear<Vec2f>(gradients, place);
+						Vec2f& gradient = fetchBilinear<Vec2f>(gradients, place);
 						//gradient = Vec2f(-gradient.y, gradient.x);
 						gradientPersistent += gradient;
-						gradientPersistent.rotate(.1);
-						place += gradientPersistent * 5;
+						place += gradientPersistent * 10;
 						aaPoint(result, place, atXy_f);
 					}
 				}
@@ -157,7 +151,6 @@ struct SApp : AppBasic {
 		boost::thread t(func, 0, src.h/2);
 		func(src.h/2, src.h);
 		t.join();
-		cout << timer.getSeconds() << endl;
 	}
 	void draw()
 	{
