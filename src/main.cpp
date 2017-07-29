@@ -145,9 +145,8 @@ struct SApp : AppBasic {
 					Vec2f gradientPersistent = Vec2f::zero();
 					for(int i = 0; i < times; i++) {
 						Vec2f const& gradient = fetchBilinear<Vec2f>(gradients, place);
-						//gradient = Vec2f(-gradient.y, gradient.x); // perpendicular (tangent) rather than gradient
+						//gradient = Vec2f(-gradient.y, gradient.x);
 						gradientPersistent += gradient;
-						//place -= gradientPersistent;
 						gradientPersistent.rotate(.1);
 						place += gradientPersistent * 5;
 						aaPoint(result, place, atXy_f);
