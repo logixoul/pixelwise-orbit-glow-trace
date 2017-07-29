@@ -129,23 +129,14 @@ struct SApp : AppBasic {
 
 		srcB = Array2D<float>(src.Size());
 		gradients = Array2D<Vec2f>(src.Size());
-		for(int y = 0; y < src.h; y++) {
-			for(int x = 0; x < src.w; x++) {
-				srcB(x, y) = getB(src(x, y));
-			}
+		forxy(src) {
+			srcB(p) = getB(src(p));
 		}
-		for(int y = 0; y < src.h; y++) {
-			for(int x = 0; x < src.w; x++) {
-				Vec2f p(x, y);
-
-				float dx = -srcB.wr(p.x - 1, p.y) + srcB.wr(p.x + 1, p.y);
-				float dy = -srcB.wr(p.x, p.y - 1) + srcB.wr(p.x, p.y + 1);
+		forxy(src) {
+			float dx = -srcB.wr(p.x - 1, p.y) + srcB.wr(p.x + 1, p.y);
+			float dy = -srcB.wr(p.x, p.y - 1) + srcB.wr(p.x, p.y + 1);
 					
-				Vec2f gradient(dx, dy); //gradient.safeNormalize();
-				
-				//gradient = Vec2f(-gradient.y, gradient.x); // perpendicular (tangent) rather than gradient
-				gradients(x, y) = gradient;
-			}
+			gradients(p) = Vec2f(dx, dy);
 		}
 
 		result = Array2D<Vec3f>(src.Size());
@@ -163,6 +154,7 @@ struct SApp : AppBasic {
 					Vec2f gradientPersistent = Vec2f::zero();
 					for(int i = 0; i < times; i++) {
 						Vec2f const& gradient = fetchBilinear<Vec2f>(gradients, place);
+						//gradient = Vec2f(-gradient.y, gradient.x); // perpendicular (tangent) rather than gradient
 						gradientPersistent += gradient;
 						//place -= gradientPersistent;
 						gradientPersistent.rotate(.1);
@@ -175,14 +167,6 @@ struct SApp : AppBasic {
 		boost::thread t(func, 0, src.h/2);
 		func(src.h/2, src.h);
 		t.join();
-		/*iter = result.getIter();
-		while(iter.line()) while(iter.pixel()) {
-			auto& pixel = (Color&)*iter.mPtr;
-			pixel *= 3;
-			pixel.r /= pixel.r+1;
-			pixel.g /= pixel.g+1;
-			pixel.b /= pixel.b+1;
-		}*/
 		cout << timer.getSeconds() << endl;
 	}
 	void draw()
