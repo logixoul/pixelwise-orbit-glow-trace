@@ -2,6 +2,8 @@
 
 #include "util.h"
 #include "stuff.h"
+#include "mainfunc_impl.h"
+#define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
 const int scale = 2;
@@ -240,4 +242,6 @@ struct SApp : AppBasic {
 	}
 };
 
-CINDER_APP_BASIC(SApp, RendererGl)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+ 		return mainFuncImpl(new SApp());
+}
