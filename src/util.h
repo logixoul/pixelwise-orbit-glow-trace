@@ -6,10 +6,6 @@
 inline string esc_macro_helper(string s) { return s.substr(1, s.length()-2); }
 #define ESC_(s) esc_macro_helper(string(#s))
 
-using namespace ci;
-
-using namespace std;
-
 typedef unsigned char byte;
 
 struct XSequential { template<class TArray, class TCoord> static int offset(TArray const& array, TCoord x, TCoord y)
@@ -31,11 +27,9 @@ public:
 
 	ArrayDeleter(ArrayDeleter const& other)
 	{
-		//*this = other;
 		arrayPtr = other.arrayPtr;
 		refcountPtr = other.refcountPtr;
 		(*refcountPtr)++;
-
 	}
 
 	ArrayDeleter const& operator=(ArrayDeleter const& other)
@@ -61,9 +55,8 @@ private:
 		if(*refcountPtr == 0)
 		{
 			delete refcountPtr;
-			//delete[] arrayPtr;
-			//fftw_free(arrayPtr);
-			_aligned_free(arrayPtr);
+			//delete[] array;
+			fftwf_free(arrayPtr);
 		}
 	}
 	
@@ -74,6 +67,13 @@ private:
 enum nofill {};
 
 template<class T, class MemoryLayoutPolicy = XSequential>
+struct Array2D;
+
+void copyCvtData(ci::Surface8u const& surface, Array2D<Vec3f> dst);
+void copyCvtData(ci::SurfaceT<float> const& surface, Array2D<Vec3f> dst);
+void copyCvtData(ci::SurfaceT<float> const& surface, Array2D<float> dst);
+
+template<class T, class MemoryLayoutPolicy>
 struct Array2D
 {
 	T* data;
@@ -83,12 +83,6 @@ struct Array2D
 	ci::Vec2i Size() const { return ci::Vec2i(w, h); }
 	ArrayDeleter<T> deleter;
 
-	// compatibility with ci::SurfaceT
-	T* getData() { return data; }
-	T const* getData() const { return data; }
-	int getWidth() const { return w; }
-	int getHeight() const { return h; }
-
 	Array2D(int w, int h, nofill) : deleter(Init(w, h)) { }
 	Array2D(Vec2i s, nofill) : deleter(Init(s.x, s.y)) { }
 	Array2D(int dimension, nofill) : deleter(Init(dimension)) { }
@@ -97,8 +91,22 @@ struct Array2D
 	Array2D(int dimension, T const& defaultValue = T()) : deleter(Init(dimension, dimension)) { fill(defaultValue); }
 	Array2D() : deleter(Init(0, 0)) { }
 	
+	template<class TSrc>
+	Array2D(ci::SurfaceT<TSrc> const& surface) : deleter(Init(surface.getWidth(), surface.getHeight()))
+	{
+		::copyCvtData(surface, *this);
+	}
+
+	template<class TSrc>
+	Array2D(cv::Mat_<TSrc> const& mat) : deleter(nullptr)
+	{
+		Init(mat.cols, mat.rows, (T*)mat.data);
+	}
+
 	T* begin() { return data; }
 	T* end() { return data+w*h; }
+	T const* begin() const { return data; }
+	T const* end() const { return data+w*h; }
 	
 	T& operator()(int i) { return data[i]; }
 	T const& operator()(int i) const { return data[i]; }
@@ -109,6 +117,20 @@ struct Array2D
 	T& operator()(Vec2i const& v) { return data[MemoryLayoutPolicy::offset(*this, v.x, v.y)]; }
 	T const& operator()(Vec2i const& v) const { return data[MemoryLayoutPolicy::offset(*this, v.x, v.y)]; }
 	
+	Vec2i wrapPoint(Vec2i p)
+	{
+		Vec2i wp = p;
+		wp.x %= w; if(wp.x < 0) wp.x += w;
+		wp.y %= h; if(wp.y < 0) wp.y += h;
+		return wp;
+	}
+	
+	T& wr(int x, int y) { return wr(Vec2i(x, y)); }
+	T const& wr(int x, int y) const { return wr(Vec2i(x, y)); }
+
+	T& wr(Vec2i const& v) { return (*this)(wrapPoint(v)); }
+	T const& wr(Vec2i const& v) const { return (*this)(wrapPoint(v)); }
+
 	int offsetOf(int x, int y) const { return MemoryLayoutPolicy::offset(*this, x, y); }
 	int offsetOf(ci::Vec2i const& p) const { return MemoryLayoutPolicy::offset(*this, p.x, p.y); }
 	bool contains(int x, int y) const { return x >= 0 && y >= 0 && x < w && y < h; }
@@ -129,12 +151,16 @@ private:
 		std::fill(begin(), end(), value);
 	}
 	T* Init(int w, int h) {
-		//data = new T[w * h];
-		data = (T*)_aligned_malloc(w * h * sizeof(T), 16);
+		// fftwf_malloc so we can use "new-array execute" fftw functions
+		auto data = (T*)fftwf_malloc(w * h * sizeof(T)); // data = new T[w * h]
+		Init(w, h, data);
+		return data;
+	}
+	void Init(int w, int h, T* data) {
+		this->data = data;
 		area = w * h;
 		this->w = w;
 		this->h = h;
-		return data;
 	}
 };
 
@@ -168,16 +194,23 @@ template<class F> float apply(float v, F f)
 	return f(v);
 }
 
-#define forxy(w, h) for(int i = 0; i < w; i++) for(int j = 0; j < h; j++)
-#define forxy(image) for(Vec2i p(0, 0); p.x < image.w; p.x++) for(p.y = 0; p.y < image.h; p.y++)
+// not sure if the following is needed. it causes a macro redefinition warning.
+// commenting it out until I've seen whether removing it breaks my projs.
+// #define forxy(w, h) for(int i = 0; i < w; i++) for(int j = 0; j < h; j++)
+#define forxy(image) \
+	for(Vec2i p(0, 0); p.x < image.w; p.x++) \
+		for(p.y = 0; p.y < image.h; p.y++) \
+			for(bool SOME_LONG_BOOL=true; SOME_LONG_BOOL;) \
+				for(decltype(image(p))& pixel=image(p); SOME_LONG_BOOL; SOME_LONG_BOOL = false)
 
 inline float psin(float a)
 {
 	return sin(a)*0.5f + 0.5f;
 }
 
-const float pi = 3.14159265;
-const float twoPi = 2 * pi;
+const float pi = 3.14159265f;
+const float twoPi = 2.0f * 3.14159265f;
+const float halfPi = .5f * 3.14159265f;
 
 void loadFile(std::vector<unsigned char>& buffer, const std::string& filename);
 
@@ -223,4 +256,48 @@ namespace Stopwatch
 	double GetElapsedMilliseconds();
 }
 
+#define fortimes(times) for(int i = 0; i < times; i++)
+
 #define FOR(variable, from, to) for(int variable = from; variable <= to; variable++)
+
+void createConsole();
+
+template<class T>
+struct ListOf
+{
+	vector<T> data;
+	ListOf(T t)
+	{
+		data.push_back(t);
+	}
+	ListOf<T>& operator()(T t)
+	{
+		data.push_back(t);
+		return *this;
+	}
+	operator vector<T>()
+	{
+		return data;
+	}
+};
+
+template<class T>
+ListOf<T> list_of(T t)
+{
+	return ListOf<T>(t);
+}
+
+template<class T>
+Array2D<T> empty_like(Array2D<T> a) {
+	return Array2D<T>(a.Size(), nofill());
+}
+
+template<class T>
+Array2D<T> ones_like(Array2D<T> a) {
+	return Array2D<T>(a.Size(), 1.0f);
+}
+
+template<class T>
+Array2D<T> zeros_like(Array2D<T> a) {
+	return Array2D<T>(a.Size(), ::zero<T>());
+}

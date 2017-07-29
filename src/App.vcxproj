@@ -64,7 +64,7 @@
       <AdditionalIncludeDirectories>..\z:\stuff\Dev\misc\cinder\include;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>cinder_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libfftw3f-3.lib;cinder_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>z:\stuff\Dev\misc\cinder\lib;z:\stuff\Dev\misc\cinder\lib\msw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -93,7 +93,7 @@
       <AdditionalIncludeDirectories>..\z:\stuff\Dev\misc\cinder\include;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>cinder.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libfftw3f-3.lib;cinder.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>z:\stuff\Dev\misc\cinder\lib;z:\stuff\Dev\misc\cinder\lib\msw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -108,19 +108,46 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ciextra.cpp" />
+    <ClCompile Include="cfg1.cpp" />
+    <ClCompile Include="colorspaces.cpp" />
+    <ClCompile Include="easyfft.cpp" />
+    <ClCompile Include="gpuBlur2_4.cpp" />
+    <ClCompile Include="hdrwrite.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mainfunc_impl.cpp" />
+    <ClCompile Include="my_console.cpp" />
+    <ClCompile Include="PerlinCalculator2D.cpp" />
     <ClCompile Include="precompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">precompiled.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">precompiled.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="shade.cpp" />
+    <ClCompile Include="simplexnoise.cpp" />
+    <ClCompile Include="stuff.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ciextra.h" />
+    <ClInclude Include="bicubic.h" />
+    <ClInclude Include="cfg1.h" />
+    <ClInclude Include="colorspaces.h" />
+    <ClInclude Include="easyfft.h" />
+    <ClInclude Include="gpgpu.h" />
+    <ClInclude Include="gpuBlur2_4.h" />
+    <ClInclude Include="hdrwrite.h" />
+    <ClInclude Include="mainfunc_impl.h" />
+    <ClInclude Include="my_console.h" />
+    <ClInclude Include="PerlinCalculator2D.h" />
     <ClInclude Include="precompiled.h" />
+    <ClInclude Include="shade.h" />
+    <ClInclude Include="simplexnoise.h" />
+    <ClInclude Include="stuff.h" />
     <ClInclude Include="util.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="hcl_lib.fs" />
+    <None Include="stuff.fs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

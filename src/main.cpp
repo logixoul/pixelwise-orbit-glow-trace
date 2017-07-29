@@ -1,6 +1,5 @@
 #include "precompiled.h"
 
-#include "ciextra.h"
 #include "util.h"
 
 ci::Surface32f src;
@@ -33,18 +32,18 @@ void aaPoint(Array2D<Vec4f>& dest, Vec2f const& pos, ColorA const& c) {
 	float uRatio = pos.x - x;
 	float vRatio = pos.y - y;
 
-	if(x<0||y<0 || x>=dest.getWidth()-1 || y>=dest.getHeight()-1)
+	if(x<0||y<0 || x>=dest.w-1 || y>=dest.h-1)
 		return;
 	float uv = uRatio * vRatio;
 	float Uv = vRatio - uv; // ((1-uRatio) * vRatio)
 	float uV = uRatio - uv; // ((1-vRatio) * uRatio)
 	float UV = 1 - uRatio - vRatio + uv; // (1-uRatio) * (1-vRatio)
-	Vec4f* addr = ((Vec4f*)dest.getData())+y*dest.getWidth()+x;
+	Vec4f* addr = ((Vec4f*)dest.data)+y*dest.w+x;
 	Vec4f const& c_ = (Vec4f const&)c;
 	addTo(addr[0], mul(c_, UV));
 	addTo(addr[1], mul(c_, uV));
-	addTo(addr[dest.getWidth()], mul(c_, Uv));
-	addTo(addr[dest.getWidth() + 1], mul(c_, uv));
+	addTo(addr[dest.w], mul(c_, Uv));
+	addTo(addr[dest.w + 1], mul(c_, uv));
 }
 
 float zero(Array2D<float> const&) { return 0.0f; }
@@ -62,10 +61,10 @@ Pixel fetchBilinear(TSurface const& src, Vec2f const& pos) {
 	int y = (int)pos.y;
 	float u_ratio = pos.x - x;
 	float v_ratio = pos.y - y;
-	Pixel* addr = ((Pixel*)src.getData())+y*src.getWidth()+x;
-	if(x<0||y<0 || x>=src.getWidth()-1 || y>=src.getHeight()-1)
+	Pixel* addr = ((Pixel*)src.data)+y*src.w+x;
+	if(x<0||y<0 || x>=src.w-1 || y>=src.h-1)
 		return zero(src);
-	const int w = src.getWidth();
+	const int w = src.w;
 	return lerpFast(
 		lerpFast(addr[0], addr[1], u_ratio),
 		lerpFast(addr[w], addr[w+1], u_ratio),
@@ -76,7 +75,43 @@ __declspec(align(16)) struct Aligned16Struct {float a,b,c,d;};
 // 11.78 sec
 // made * into sse mul. 10.83 sec.
 // made += into sse add. 13.64 sec.
+
+bool mouseDown_[3];
+bool keys[256];
+float mouseX, mouseY;
+bool keys2[256];
+bool pause;
+
 struct SApp : AppBasic {
+		void keyDown(KeyEvent e)
+	{
+		keys[e.getChar()] = true;
+		if(e.isControlDown()&&e.getCode()!=KeyEvent::KEY_LCTRL)
+		{
+			keys2[e.getChar()] = !keys2[e.getChar()];
+			return;
+		}
+		if(keys['r'])
+		{
+		}
+		if(keys['p'] || keys['2'])
+		{
+			pause = !pause;
+		}
+	}
+	void keyUp(KeyEvent e)
+	{
+		keys[e.getChar()] = false;
+	}
+	
+	void mouseDown(MouseEvent e)
+	{
+		mouseDown_[e.isLeft() ? 0 : e.isMiddle() ? 1 : 2] = true;
+	}
+	void mouseUp(MouseEvent e)
+	{
+		mouseDown_[e.isLeft() ? 0 : e.isMiddle() ? 1 : 2] = false;
+	}
 	void setup()
 	{
 		createConsole();
@@ -86,7 +121,7 @@ struct SApp : AppBasic {
 		cout << test2 << endl;
 		Sleep(100*1000);*/
 		ci::Timer timer;timer.start();
-		src = Surface32f(loadImage("test.png"), SurfaceConstraintsDefault(), false);
+		src = Surface32f(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
 		srcB = Array2D<float>(src.getWidth(), src.getHeight());
 		gradients = Array2D<Vec2f>(src.getWidth(), src.getHeight());
 		for(int y = 0; y < src.getHeight(); y++) {
@@ -97,28 +132,13 @@ struct SApp : AppBasic {
 		float maxDist = Vec3f::one().length();
 		for(int y = 0; y < src.getHeight(); y++) {
 			for(int x = 0; x < src.getWidth(); x++) {
-				Vec2f place(x, y);
+				Vec2f p(x, y);
 
-				Vec2f gradient = Vec2f::zero();
-				Vec3f& here = (Vec3f&)src.getPixel(Vec2i(x, y));
-
-				for (int i = -1; i <= 1; i++)
-				{
-					for (int j = -1; j <= 1; j++)
-					{
-						Vec3f& neighbour = (Vec3f&)src.getPixel(Vec2i(x + i, y + j));
-						float colorDistance = neighbour.distance(here);
-						float weight = 1.0f - colorDistance / maxDist;
-						gradient += weight * Vec2f(i, j);
-					}
-				}
-				/*
-				float dx = -fetchBilinear<float>(srcB, place + Vec2f(-1, 0)) + fetchBilinear<float>(srcB, place + Vec2f(1, 0));
-				float dy = -fetchBilinear<float>(srcB, place + Vec2f(0, -1)) + fetchBilinear<float>(srcB, place + Vec2f(0, 1));
+				float dx = -srcB.wr(p.x - 1, p.y) + srcB.wr(p.x + 1, p.y);
+				float dy = -srcB.wr(p.x, p.y - 1) + srcB.wr(p.x, p.y + 1);
 					
 				Vec2f gradient(dx, dy); //gradient.safeNormalize();
-				//gradient = gradient.safeNormalized() * pow(gradient.length(), 2.0f);
-				*/
+				
 				//gradient = Vec2f(-gradient.y, gradient.x); // perpendicular (tangent) rather than gradient
 				gradients(x, y) = gradient;
 			}
@@ -162,9 +182,6 @@ struct SApp : AppBasic {
 		}*/
 		cout << timer.getSeconds() << endl;
 	}
-	void mouseDown(MouseEvent e)
-	{
-	}
 	void draw()
 	{
 		gl::clear(Color(0, 0, 0));
@@ -173,7 +190,7 @@ struct SApp : AppBasic {
 		glTexSubImage2D(GL_TEXTURE_2D,
 			0, // level
 			0, 0, // offset
-			result.getWidth(), result.getHeight(),
+			result.w, result.h,
 			GL_RGBA,
 			GL_FLOAT,
 			result.data);
