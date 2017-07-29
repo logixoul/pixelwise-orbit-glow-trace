@@ -135,8 +135,9 @@ struct SApp : AppBasic {
 		
 		// kernel calculates for each element C=A+B
 		std::string kernel_code=
-				"   void kernel simple_add(global const int* A, global const int* B, global int* C){       "
-				"       C[get_global_id(0)]=A[get_global_id(0)]+B[get_global_id(0)];                 "
+				"   void kernel simple_add(global const int* A, global const int* B, global int* C) {"
+				"		int gid = get_global_id(0);"
+				"       C[gid] = A[gid] + B[gid];"
 				"   }                                                                               ";
 		sources.push_back(std::make_pair<const char*, size_t>(kernel_code.c_str(),kernel_code.length()));
  
