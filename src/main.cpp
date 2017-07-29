@@ -165,7 +165,7 @@ struct SApp : AppBasic {
  
  
 		//run the kernel
-		cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> simple_add(cl::Kernel(program,"simple_add"));
+		cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> simple_add(program,"simple_add");
 		cl::EnqueueArgs eargs(queue,cl::NullRange,cl::NDRange(10),cl::NullRange);
 		simple_add(eargs, buffer_A,buffer_B,buffer_C);
  
