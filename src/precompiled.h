@@ -13,6 +13,7 @@
 #include <cinder/Vector.h>
 #include <cinder/Rand.h>
 #include <boost/foreach.hpp>
+#include <boost/assign.hpp>
 #include <fftw3.h>
 #include <numeric>
 #include <tuple>
@@ -23,4 +24,3 @@
 using namespace ci;
 using namespace ci::app;
 using namespace std;
-

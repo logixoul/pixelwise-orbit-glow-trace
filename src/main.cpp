@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "stuff.h"
+#include <CL/cl.hpp>
 
 const int scale = 2;
 Array2D<float> srcB;
@@ -112,10 +113,89 @@ struct SApp : AppBasic {
 	{
 		mouseDown_[e.isLeft() ? 0 : e.isMiddle() ? 1 : 2] = false;
 	}
+
+	void testCL() {
+				std::vector<cl::Platform> all_platforms;
+		cl::Platform::get(&all_platforms);
+		
+		cl::Platform default_platform=all_platforms[0];
+		std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<std::endl;
+
+		std::vector<cl::Device> all_devices;
+	    default_platform.getDevices(CL_DEVICE_TYPE_GPU, &all_devices);
+		cl::Device default_device=all_devices[0];
+		std::cout<< "Using device: "<<default_device.getInfo<CL_DEVICE_NAME>()<<std::endl;
+
+		cl::Context context(default_device);
+
+		cl::Program::Sources sources;
+
+		
+		// kernel calculates for each element C=A+B
+		std::string kernel_code=
+				"   void kernel simple_add(global const int* A, global const int* B, global int* C){       "
+				"       C[get_global_id(0)]=A[get_global_id(0)]+B[get_global_id(0)];                 "
+				"   }                                                                               ";
+		sources.push_back(std::make_pair<const char*, size_t>(kernel_code.c_str(),kernel_code.length()));
+ 
+		cl::Program program(context,sources);
+		std::vector<cl::Device> deviceArg = boost::assign::list_of(default_device);
+		if(program.build(deviceArg)!=CL_SUCCESS){
+			std::cout<<" Error building: "<<program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device)<<"\n";
+			exit(1);
+		}
+ 
+ 
+		// create buffers on the device
+		cl::Buffer buffer_A(context,CL_MEM_READ_WRITE,sizeof(int)*10);
+		cl::Buffer buffer_B(context,CL_MEM_READ_WRITE,sizeof(int)*10);
+		cl::Buffer buffer_C(context,CL_MEM_READ_WRITE,sizeof(int)*10);
+ 
+		int A[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+		int B[] = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+ 
+		//create queue to which we will push commands for the device.
+		cl::CommandQueue queue(context,default_device);
+ 
+		//write arrays A and B to the device
+		queue.enqueueWriteBuffer(buffer_A,CL_FALSE,0,sizeof(int)*10,A);
+		queue.enqueueWriteBuffer(buffer_B,CL_FALSE,0,sizeof(int)*10,B);
+ 
+ 
+		//run the kernel
+		cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> simple_add(cl::Kernel(program,"simple_add"));
+		cl::EnqueueArgs eargs(queue,cl::NullRange,cl::NDRange(10),cl::NullRange);
+		simple_add(eargs, buffer_A,buffer_B,buffer_C);
+ 
+		//alternative way to run the kernel
+		/*cl::Kernel kernel_add=cl::Kernel(program,"simple_add");
+		kernel_add.setArg(0,buffer_A);
+		kernel_add.setArg(1,buffer_B);
+		kernel_add.setArg(2,buffer_C);
+		queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(10),cl::NullRange);
+		queue.finish();*/
+ 
+		int C[10];
+		//read result C from the device to array C
+		queue.enqueueReadBuffer(buffer_C,CL_TRUE,0,sizeof(int)*10,C);
+ 
+		std::cout<<" result: \n";
+		for(int i=0;i<10;i++){
+			std::cout<<C[i]<<" ";
+		}
+		std::cout << std::endl;
+	}
+
 	void setup()
 	{
 		createConsole();
 
+		////////////
+
+		testCL();
+
+		///////////
+		
 		Array2D<Vec3f> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
