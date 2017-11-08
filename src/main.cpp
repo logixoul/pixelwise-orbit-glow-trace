@@ -148,16 +148,6 @@ struct SApp : App {
 		stefanDraw();
 		stefanfw::endFrame();
 	}
-	void keyDown(KeyEvent e)
-	{
-		if (keys['r'])
-		{
-		}
-		if (keys['p'] || keys['2'])
-		{
-			pause = !pause;
-		}
-	}
 	void stefanUpdate() {
 	}
 	void stefanDraw()
