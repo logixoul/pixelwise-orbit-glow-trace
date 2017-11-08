@@ -9,26 +9,26 @@ int wsx, wsy;
 Array2D<float> srcB;
 Array2D<vec3> result;
 
-float getB(Vec3f c)
+float getB(vec3 c)
 {
   return sqrt(c.x*c.x+c.y*c.y+c.z*c.z);//(c.r+c.g+c.b);
 }
 
-inline Vec4f mul(Vec4f const& v, float f)
+inline vec4 mul(vec4 const& v, float f)
 {
 	__m128 f_loaded = _mm_load1_ps(&f);
 	__m128& v_casted = (__m128&)v;
 	__m128 result = _mm_mul_ps(f_loaded, v_casted);
-	return (Vec4f&)result;
+	return (vec4&)result;
 }
 
-inline void addTo(Vec4f& dest, Vec4f const& v)
+inline void addTo(vec4& dest, vec4 const& v)
 {
-	//dest = (Vec4f&)_mm_add_ps((__m128&)dest, (__m128&)v);
+	//dest = (vec4&)_mm_add_ps((__m128&)dest, (__m128&)v);
 	dest += v;
 }
 
-void aaPoint(Array2D<Vec4f>& dest, Vec2f const& pos, ColorA const& c) {
+void aaPoint(Array2D<vec4>& dest, vec2 const& pos, ColorA const& c) {
 	int x = (int)pos.x;
 	int y = (int)pos.y;
 	float uRatio = pos.x - x;
@@ -40,8 +40,8 @@ void aaPoint(Array2D<Vec4f>& dest, Vec2f const& pos, ColorA const& c) {
 	float Uv = vRatio - uv; // ((1-uRatio) * vRatio)
 	float uV = uRatio - uv; // ((1-vRatio) * uRatio)
 	float UV = 1 - uRatio - vRatio + uv; // (1-uRatio) * (1-vRatio)
-	Vec4f* addr = ((Vec4f*)dest.data)+y*dest.w+x;
-	Vec4f const& c_ = (Vec4f const&)c;
+	vec4* addr = ((vec4*)dest.data)+y*dest.w+x;
+	vec4 const& c_ = (vec4 const&)c;
 	addTo(addr[0], mul(c_, UV));
 	addTo(addr[1], mul(c_, uV));
 	addTo(addr[dest.w], mul(c_, Uv));
@@ -49,7 +49,7 @@ void aaPoint(Array2D<Vec4f>& dest, Vec2f const& pos, ColorA const& c) {
 }
 
 float zero(Array2D<float> const&) { return 0.0f; }
-Vec2f zero(Array2D<Vec2f> const&) { return Vec2f::zero(); }
+vec2 zero(Array2D<vec2> const&) { return vec2(); }
 
 template<class T>
 T lerpFast(T const& a, T const& b, float coef)
@@ -58,7 +58,7 @@ T lerpFast(T const& a, T const& b, float coef)
 }
 
 template<class Pixel, class TSurface>
-Pixel fetchBilinear(TSurface const& src, Vec2f const& pos) {
+Pixel fetchBilinear(TSurface const& src, vec2 const& pos) {
 	int x = (int)pos.x;
 	int y = (int)pos.y;
 	float u_ratio = pos.x - x;
@@ -78,10 +78,6 @@ __declspec(align(16)) struct Aligned16Struct {float a,b,c,d;};
 // made * into sse mul. 10.83 sec.
 // made += into sse add. 13.64 sec.
 
-bool mouseDown_[3];
-bool keys[256];
-float mouseX, mouseY;
-bool keys2[256];
 bool pause;
 
 struct SApp : App {
@@ -118,7 +114,7 @@ struct SApp : App {
 	{
 		createConsole();
 
-		Array2D<Vec3f> src = Surface8u(loadImage("test.png"), SurfaceConstraintsDefault(), false);
+		Array2D<vec3> src = Surface8u(loadImage("test.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
 
@@ -142,19 +138,19 @@ struct SApp : App {
 						atXy_f = src(x, y)[chan];
 						const float times = 50.0f;
 						atXy_f /= times;
-						Vec2f place(x, y);
-						Vec2f gradientPersistent = Vec2f::zero();
+						vec2 place(x, y);
+						vec2 gradientPersistent;
 						for(int i = 0; i < times; i++) {
-							Vec2f& gradient = fetchBilinear<Vec2f>(gradients, place);
-							//gradient = Vec2f(-gradient.y, gradient.x);
+							vec2& gradient = fetchBilinear<vec2>(gradients, place);
+							//gradient = vec2(-gradient.y, gradient.x);
 							gradientPersistent += gradient;
-							place += gradientPersistent * 10;
+							place += gradientPersistent * 10.0f;
 							aaPoint(resultRGB[chan], place, atXy_f);
 						}
 					}
 				}
 			};
-			boost::thread t(func, 0, src.h/2);
+			std::thread t(func, 0, src.h/2);
 			func(src.h/2, src.h);
 			t.join();
 		}
