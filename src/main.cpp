@@ -2,18 +2,24 @@
 
 #include "util.h"
 #include "stuff.h"
-#include "mainfunc_impl.h"
+#include "stefanfw.h"
+
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
+int wsx, wsy;
 const int scale = 2;
 Array2D<float> srcB;
-Array2D<Vec3f> result;
+Array2D<vec3> result;
 
-float getB(Vec3f c)
+#define MULTILINE(...) #__VA_ARGS__
+
+float getB(vec3 c)
 {
   return sqrt(c.x*c.x+c.y*c.y+c.z*c.z);//(c.r+c.g+c.b);
 }
+
+bool pause;
 
 inline Vec4f mul(Vec4f const& v, float f)
 {
@@ -199,7 +205,7 @@ struct SApp : AppBasic {
 
 		///////////
 		
-		Array2D<Vec3f> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
+		Array2D<vec3> src = Surface8u(loadImage("test5.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
 		src = ::resize(src, src.Size() / ::scale, ci::FilterTriangle());
 
@@ -209,7 +215,7 @@ struct SApp : AppBasic {
 		}
 		auto gradients = ::get_gradients(srcB);
 
-		result = Array2D<Vec3f>(src.Size());
+		result = Array2D<vec3>(src.Size());
 		
 		auto func = [&](int yMin, int yMax) {
 			for(int y = yMin; y < yMax; y++) {
@@ -243,6 +249,4 @@ struct SApp : AppBasic {
 	}
 };
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
- 		return mainFuncImpl(new SApp());
-}
+CINDER_APP(SApp, RendererGl)
