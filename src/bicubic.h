@@ -21,7 +21,7 @@ Vec4f cubicCoefs(float x)
 		);
 }
 template<class T>
-T getBicubic(Array2D<T> src, Vec2f p)
+T getBicubic(Array2D<T> src, vec2 p)
 {
 	return getBicubic(src, p.x, p.y);
 }
@@ -60,7 +60,7 @@ T getBicubic(Array2D<T> src, float xn, float yn)
 	return interpY;
 }
 template<class T>
-T getBicubic2(Array2D<T> src, Vec2f v)
+T getBicubic2(Array2D<T> src, vec2 v)
 {
 	return getBicubic2(src, v.x, v.y);
 }

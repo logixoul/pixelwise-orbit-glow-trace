@@ -2,10 +2,12 @@
 
 #include "util.h"
 #include "stuff.h"
+#include "stefanfw.h"
 
 const int scale = 1;
+int wsx, wsy;
 Array2D<float> srcB;
-Array2D<Vec3f> result;
+Array2D<vec3> result;
 
 float getB(Vec3f c)
 {
@@ -82,7 +84,7 @@ float mouseX, mouseY;
 bool keys2[256];
 bool pause;
 
-struct SApp : AppBasic {
+struct SApp : App {
 		void keyDown(KeyEvent e)
 	{
 		keys[e.getChar()] = true;
@@ -166,4 +168,4 @@ struct SApp : AppBasic {
 	}
 };
 
-CINDER_APP_BASIC(SApp, RendererGl)
+CINDER_APP(SApp, RendererGl)
