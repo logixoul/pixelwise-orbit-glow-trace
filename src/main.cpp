@@ -4,8 +4,8 @@
 #include "stuff.h"
 #include "stefanfw.h"
 
-const int scale = 1;
-int wsx, wsy;
+int wsx = 600, wsy = 400;
+const int scale = 2;
 Array2D<float> srcB;
 Array2D<vec3> result;
 
@@ -83,12 +83,6 @@ bool pause;
 struct SApp : App {
 		void keyDown(KeyEvent e)
 	{
-		keys[e.getChar()] = true;
-		if(e.isControlDown()&&e.getCode()!=KeyEvent::KEY_LCTRL)
-		{
-			keys2[e.getChar()] = !keys2[e.getChar()];
-			return;
-		}
 		if(keys['r'])
 		{
 		}
@@ -97,22 +91,13 @@ struct SApp : App {
 			pause = !pause;
 		}
 	}
-	void keyUp(KeyEvent e)
-	{
-		keys[e.getChar()] = false;
-	}
-	
-	void mouseDown(MouseEvent e)
-	{
-		mouseDown_[e.isLeft() ? 0 : e.isMiddle() ? 1 : 2] = true;
-	}
-	void mouseUp(MouseEvent e)
-	{
-		mouseDown_[e.isLeft() ? 0 : e.isMiddle() ? 1 : 2] = false;
-	}
 	void setup()
 	{
 		createConsole();
+		enableDenormalFlushToZero();
+		disableGLReadClamp();
+
+		stefanfw::eventHandler.subscribeToEvents(*this);
 
 		Array2D<vec3> src = Surface8u(loadImage("test.png"), SurfaceConstraintsDefault(), false);
 		setWindowSize(src.w, src.h);
@@ -156,7 +141,26 @@ struct SApp : App {
 		}
 		result = ::merge(resultRGB);
 	}
-	void draw()
+	void update()
+	{
+		stefanfw::beginFrame();
+		stefanUpdate();
+		stefanDraw();
+		stefanfw::endFrame();
+	}
+	void keyDown(KeyEvent e)
+	{
+		if (keys['r'])
+		{
+		}
+		if (keys['p'] || keys['2'])
+		{
+			pause = !pause;
+		}
+	}
+	void stefanUpdate() {
+	}
+	void stefanDraw()
 	{
 		gl::clear(Color(0, 0, 0));
 		auto tex = gtex(result);
